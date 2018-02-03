@@ -86,3 +86,9 @@ deploy:
   type: git
   repo: git@github.com:voodeng/voodeng.github.com.git
   branch: master
+
+# hexo-admin authentification
+admin:
+  username: voodeng
+  password_hash: $2a$10$YwbyGpZYktIk5GGd6tAu3u7Ka/HAgwFAb4nCiPNjbHznDSaD42JnK
+  secret: one great show can change the world
