@@ -1,22 +1,33 @@
-title: Hexo 自动化部署
+---
+title: Hexo + Travis-CI 自动化部署到 Github
 author: Voodeng
 tags: []
 categories: []
-date: 2018-06-04 06:37:00
+date: 2018-06-04 20:37:00
 ---
 
-[参考1](http://www.qingpingshan.com/m/view.php?aid=387037)
 
-https://iamstarkov.com/deploy-gh-pages-from-travis/
+## Hexo
 
-https://blessing.studio/deploy-hexo-blog-automatically-with-travis-ci/
+hexo 新建后，改变源文件分支至hexo-source
 
-需要实现 仅编辑 markdown 文件，上传至github指定分支后， travis-CI自动执行，生成文件并部署到github指定项目分支.
+master分支仅放入hexo g生成的文件
+
+
+
+## Travis CI
 
 [travis yaml online lint](http://yaml-online-parser.appspot.com/)
 
-1. 单纯脚本
-```
+### .travis.yml 部署
+
+
+CI_TOKEN 是 Github Person access key，需要去 Github 生成，然后在 travis-ci 项目中定义环境变量
+
+
+- 并不推荐，是强制push，git里只有一条记录
+
+```yml
 after_script:
   - cd ./public
   - git init
@@ -25,21 +36,36 @@ after_script:
   - git push --force --quiet "https://${CI_TOKEN}@${GH_REF}" master:master 
 ```
 
-会强制push，并且git里只有一条记录
 
-```
+- 先 clone 再 commit，避免直接 force commit，brance 会延续 commit， 并 commit 信息
+
+```yml
 after_success:
-- .travis/deploy.sh
+  - git clone -b master "https://${GH_REF}" .deploy_git
+  - cd .deploy_git
+  - git checkout master
+  - mv .git/ ../public/
+  - cd ../public
+  - git add .
+  - git commit -m "Site updated ${STAMP}"
+  - git push --force --quiet "https://${CI_TOKEN}@${GH_REF}" master:master
+  
+env:
+ global:
+   # Github Pages
+   - GH_REF: github.com/voodeng/voodeng.github.com.git
+   # 时间是根据服务器来的
+   - STAMP: $(date +%Y-%m-%d-%H:%M:%S)
 ```
 
-```.travis/deploy.sh
+- 分离的脚本
+
+```bash
 #!/bin/bash
 set -ev
 export TZ='Asia/Shanghai'
 
-# 先 clone 再 commit，避免直接 force commit
-# 不然整个 branch 就总是只有一个 commit，不好看
-git clone -b master git@github.com:voodeng/voodeng.github.com.git .deploy_git
+git clone -b master "https://${GH_REF}" .deploy_git
 
 cd .deploy_git
 git checkout master
@@ -48,20 +74,40 @@ cd ../public
 
 git add .
 git commit -m "Site updated: `date +"%Y-%m-%d %H:%M:%S"`"
-git push origin master:master --force --quiet
+git push --force --quiet "https://${CI_TOKEN}@${GH_REF}" master:master
 ```
 
-2. 使用 hexo-deploy
 
-有了这个 token 后，原先用
+### 使用 hexo-deploy
 
-https://github.com/username/repo.git
-进行访问，现在换成：
-
-https://<token>@github.com/owner/repo.git
-
+_config.yml 里 
+```yml
+deploy:
+  type: git
+  repo: git@github.com:voodeng/voodeng.github.com.git # 这里需要替换下
+  branch: master
 ```
+
+在.travis.yml中，构建过程中替换
+```yml
 after_success:
-- sed -i'' "/^ *repo/s~github\.com~${CI_TOKEN}@github.com~" _config.yml
-- hexo deploy
+  - sed -i'' "/^ *repo/s~git@github\.com~https://${CI_TOKEN}@github.com~" _config.yml
+  - hexo deploy
 ```
+
+还是需要定义一下push过程，不然一样只有一个commit
+
+
+## Prose.io
+
+![](https://prose.io/img/prose@57.png)
+
+[Prose](https://prose.io) 等在线的工具，只要能访问 Github 分支并新建保存 markdown 文件，保存后即可自动同步哈
+
+
+### 参考
+http://www.qingpingshan.com/m/view.php?aid=387037
+
+https://iamstarkov.com/deploy-gh-pages-from-travis/
+
+https://blessing.studio/deploy-hexo-blog-automatically-with-travis-ci/
