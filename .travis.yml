@@ -23,7 +23,7 @@ after_script:
 
 branches:
   only:
-  - hexo-sourc
+  - hexo-source
 
 env:
  global:
