@@ -1,25 +1,31 @@
 language: node_js
-node_js:
-- 8.9.0
+node_js: stable
+
 cache:
   directories:
   - node_modules
+
 before_install:
 - npm install hexo-cli -g
+- git config --global user.name "voodeng"
+- git config --global user.email "voodeng@gmail.com"
+
 install:
 - npm install
+
 script:
 - hexo clean
 - hexo generate
-after_script:
-  - cd ./public
-  - git init
-  - git config user.name "voodeng"
-  - git config user.email "voodeng@gmail.com"
-  - git add .
-  - git commit -m "TravisCI Hexo Generate"
-  # Github Pages
-  - git push --force --quiet "https://${CI_TOKEN}@${GH_REF}" master:master 
+
+after_success:
+- git clone -b master "https://${GH_REF}" .deploy_git
+- cd .deploy_git
+- git checkout master
+- mv .git/ ../public/
+- cd ../public
+- git add .
+- git commit -m "Site updated: `date +"%Y-%m-%d %H:%M:%S"`"
+- git push --force --quiet "https://${CI_TOKEN}@${GH_REF}" master:master 
 
 branches:
   only:
